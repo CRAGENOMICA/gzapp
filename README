@@ -1,0 +1,9 @@
+To compile the source code, run:
+
+    make
+
+To execute the application, run:
+
+    ./bin/gzapp
+
+
