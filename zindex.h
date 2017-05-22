@@ -6,8 +6,8 @@
  *  \brief     zindex.h
  *  \details
  *  \author    Joan Jené
- *  \version   1.8
- *  \date      May 19, 2007
+ *  \version   1.9
+ *  \date      May 22, 2017
  *  \history   - April 7, 2007 :  The SGZIndex struct has its own SScanState struct.
  *             - April 10, 2007 : Comments updated & items++ added.
  *             - April 11, 2007 : Search from last position found.
@@ -15,6 +15,7 @@
  *             - April 18, 2017 : Documentation updated & fzprintf, fzgetc, fzeof, fzclose functions updated, too.
  *             - April 20, 2017 : Library updated for Mac Os X.
  *             - May 19, 2017   : fzseekNearest added.
+ *             - May 22, 2017   : C++ things (comments, declararions, ...) changed to C things.
  *  \pre
  *  \bug
  *  \warning
@@ -47,10 +48,10 @@
  *			struct SGZIndex idx;
  *			load_index_from_file(gz.index_file_name, &idx);
  *
- *          long int row_num = -1;                                                                   // Set to -1 if you want to search by ID.
- *			if (fzseek(h, &gz, &idx, "00000001", &row_num, false, DO_NOT_GET_NEAREST) == GZ_OK) {    // Or set NULL to the ID if you want to seach by position.
- *                                                                                                   // After the call to fzseek, the row_num variable has the reached sequence number (0-based).
- *                                                                                                   // Set the last parameter to true (1) if you want to search from the last position found. It is faster.
+ *          long int row_num = -1;                                                                    Set to -1 if you want to search by ID.
+ *			if (fzseek(h, &gz, &idx, "00000001", &row_num, false, DO_NOT_GET_NEAREST) == GZ_OK) {     Or set NULL to the ID if you want to seach by position.
+ *                                                                                                    After the call to fzseek, the row_num variable has the reached sequence number (0-based).
+ *                                                                                                    Set the last parameter to true (1) if you want to search from the last position found. It is faster.
  *	 			char ch = ' ';
  * 				while((!fzeof(h, &gz)) && (ch != '\n') && (ch != '\x0')) {
  *					ch = fzgetc(h, &gz);

@@ -6,8 +6,8 @@
  *  \brief     zindex.c
  *  \details
  *  \author    Joan Jené
- *  \version   1.8
- *  \date      May 19, 2007
+ *  \version   1.9
+ *  \date      May 22, 2017
  *  \pre
  *  \bug
  *  \warning
@@ -111,14 +111,20 @@ void init_scanstate_structure(struct SScanState *ss) {
 gz_return compress_file_and_create_index(const char *uncompressed_file_name, const char *compressed_file_name, const char *index_file_name) {
 	gz_return ret = GZ_OK;
 
+	unsigned int i = 0;
+	FILE *uncompressed_handle = NULL;
+    FILE *compressed_handle = NULL;
+	long int compressed_bytes_written = 0;
+	long int gz_block_starting_pos = 0;
+	long int bytes_write = 0;
+	int isEOF = false;
+	int flush = Z_FULL_FLUSH;
+	struct SGZIndex idx;
+
 	if ((uncompressed_file_name == NULL) || (compressed_file_name == NULL)
 			|| (index_file_name == NULL)) {
 		ret = GZ_PARAMS_ERROR;
 	} else {
-
-		unsigned int i = 0;
-
-		struct SGZIndex idx;
 		init_gzindex_structure(&idx);
 
 
@@ -152,11 +158,11 @@ gz_return compress_file_and_create_index(const char *uncompressed_file_name, con
 		 * Save the index file
 		 */
 
-		FILE *uncompressed_handle = fopen((char *)uncompressed_file_name, "r");
+        uncompressed_handle = fopen((char *)uncompressed_file_name, "r");
 
 		if (uncompressed_handle != NULL) {
 
-			FILE *compressed_handle = fopen((char *)compressed_file_name, "wb+");
+			compressed_handle = fopen((char *)compressed_file_name, "wb+");
 
 			if (compressed_handle != NULL) {
 
@@ -176,11 +182,11 @@ gz_return compress_file_and_create_index(const char *uncompressed_file_name, con
 				CALL_ZLIB(deflateInit2(&(z.strm), Z_DEFAULT_COMPRESSION, Z_DEFLATED, windowBits | GZIP_ENCODING, 8, Z_DEFAULT_STRATEGY));
 				z.have = CHUNK;
 
-				long int compressed_bytes_written = 0;
-				long int gz_block_starting_pos = 0;
-				long int bytes_write = 0;
-				int isEOF = false;
-				int flush = Z_FULL_FLUSH;
+				compressed_bytes_written = 0;
+				gz_block_starting_pos = 0;
+				bytes_write = 0;
+				isEOF = false;
+				flush = Z_FULL_FLUSH;
 
 				do {
 					/* read uncompressed input data */
@@ -209,7 +215,7 @@ gz_return compress_file_and_create_index(const char *uncompressed_file_name, con
 						 * access is desired. Using Z_FULL_FLUSH too often can seriously degrade compression.
 						 */
 
-						// THIS LOOP WILL ONLY ITERATE ONCE: (HERE ONLY FOR SECURITY PURPOSES)
+						/* THIS LOOP WILL ONLY ITERATE ONCE: (HERE ONLY FOR SECURITY PURPOSES) */
 						do {
 							/* compress the data */
 
@@ -220,7 +226,6 @@ gz_return compress_file_and_create_index(const char *uncompressed_file_name, con
 							if (isEOF == false) {
 								flush = Z_FULL_FLUSH;
 							} else {
-								//flush = Z_FINISH;
 								flush = Z_FULL_FLUSH;
 							}
 */
@@ -235,7 +240,7 @@ gz_return compress_file_and_create_index(const char *uncompressed_file_name, con
 									compressed_handle);
 							compressed_bytes_written += bytes_write;
 
-						//!! Removed } while (z.strm.avail_out == 0); /* continue compressing until it does not exist more data to be compressed */
+						/*!! Removed } while (z.strm.avail_out == 0);*/ /* continue compressing until it does not exist more data to be compressed */
 						} while (z.strm.avail_in != 0); /* continue compressing until it does not exist more data to be compressed */
 					}
 				} while (isEOF == false);
@@ -260,6 +265,8 @@ gz_return compress_file_and_create_index(const char *uncompressed_file_name, con
 
 gz_return fzseek(FILE *file_handle, SGZip *z, struct SGZIndex *idx, const char *search_id, long int *row_num, int from_last_search) {
 	gz_return ret = GZ_OK;
+	long int uncompressed_bytes = 0;
+	int flush = 0;
 
     if (((((search_id != NULL) && (*row_num == -1))) || (((search_id == NULL) && (*row_num != -1)))) && 
         (file_handle != NULL) &&
@@ -279,8 +286,8 @@ gz_return fzseek(FILE *file_handle, SGZip *z, struct SGZIndex *idx, const char *
 
 			/*printf("Found: position for ID '%s' is (%ld, %ld)\n", search_id, search->position, search->offset);*/
 
-			long int uncompressed_bytes = 0;
-			int flush = 0;
+			uncompressed_bytes = 0;
+			flush = 0;
 
 			(*z).reading = 1;
 			if ((*z).file_compressed == 1) {
@@ -364,25 +371,29 @@ gz_return fzseek(FILE *file_handle, SGZip *z, struct SGZIndex *idx, const char *
 gz_return fzseekNearest(FILE *file_handle, SGZip *z, struct SGZIndex *idx, const char *search_id, long int max_search, long int *seq_id_found) {
     gz_return ret = GZ_OK;
 
-    // Example:
-    // 1,1 TTTTTTTTTTTTTTTT
-    // 1,2 TTTTTTTTTTTTTTTT
-    // 1,5 TTTTTTTTTTTTTTTT
-    // 1,6 TTTTTTTTTTTTTTTT
-    // 2,1 TTTTTTTTTTTTTTTT
-    // We are looking for "1:3"
+    struct SIndexPos *last_search = NULL;
+    long int row_num = -1;
+    long int i = 0;
 
-    struct SIndexPos *last_search = idx->last_search; // store the current last_search position
+    /*
+     Example:
+     1,1 TTTTTTTTTTTTTTTT
+     1,2 TTTTTTTTTTTTTTTT
+     1,5 TTTTTTTTTTTTTTTT
+     1,6 TTTTTTTTTTTTTTTT
+     2,1 TTTTTTTTTTTTTTTT
+     We are looking for "1:3"
+    */
 
     *seq_id_found = -1;
+    last_search = idx->last_search; /* store the current last_search position */
 
-    long int row_num = -1;
     if ((ret = fzseek(file_handle, z, idx, search_id, &row_num, true)) != GZ_OK) {
 
-        // "1,3" does not exist. So, this function must return the "1,5" but the index does not store (x:y) in clear text
-        // so, the function must try "1:3", "1:4", "1:5" until it gets the sequence.
+        /* "1,3" does not exist. So, this function must return the "1,5" but the index does not store (x:y) in clear text
+           so, the function must try "1:3", "1:4", "1:5" until it gets the sequence. */
 
-        // Let's separate "1:3" into two chars first="1" and second="3"
+        /* Let's separate "1:3" into two chars first="1" and second="3" */
         const char SEPARATOR[2] = ":";
         char *first;
         char *second;
@@ -402,8 +413,9 @@ gz_return fzseekNearest(FILE *file_handle, SGZip *z, struct SGZIndex *idx, const
                 char *ptr;
                 searched_sequence_id = strtol(second, &ptr, 10);
 
-                for (long int i = searched_sequence_id + 1; ((i < max_search) && (ret != GZ_OK)); i++) {
-                    idx->last_search = last_search; // restore the last_search position in order to start searching from this position (through the index)
+                i = 0;
+                for (i = searched_sequence_id + 1; ((i < max_search) && (ret != GZ_OK)); i++) {
+                    idx->last_search = last_search; /* restore the last_search position in order to start searching from this position (through the index) */
 
                     strcpy(new_search_id, first);
                     strcat(new_search_id, ":");
@@ -427,7 +439,7 @@ gz_return fzseekNearest(FILE *file_handle, SGZip *z, struct SGZIndex *idx, const
     }
 
     if (ret != GZ_OK) {
-        idx->last_search = last_search; // restore the last_search position in order to start searching from this position (through the index)
+        idx->last_search = last_search; /* restore the last_search position in order to start searching from this position (through the index) */
     }
 
     return ret;
@@ -466,7 +478,7 @@ gz_return add_index_position(struct SGZIndex *idx) {
 			idx->last->next = new_node;
 		}
 		idx->last = new_node;
-		//idx->items++;
+		/* idx->items++; */
 	}
 
 	return ret;
@@ -511,6 +523,7 @@ struct SIndexPos *get_index_position_by_pos(long int pos, struct SGZIndex *idx, 
 
 gz_return load_index_from_file(const char *file_name, struct SGZIndex *idx) {
 	gz_return ret = GZ_OK;
+    FILE *h = NULL;
 
 	if ((file_name == NULL) || (idx == NULL)) {
 		ret = GZ_PARAMS_ERROR;
@@ -518,7 +531,7 @@ gz_return load_index_from_file(const char *file_name, struct SGZIndex *idx) {
 
 		init_gzindex_structure(idx);
 
-		FILE *h = fopen((char *)file_name, "rb");
+		h = fopen((char *)file_name, "rb");
 
 		if (h != NULL) {
 			struct SIndexPosDisk obj;

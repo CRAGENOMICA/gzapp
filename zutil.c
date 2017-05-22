@@ -6,8 +6,8 @@
  *  \brief     zutil.c
  *  \details
  *  \author    Joan Jené
- *  \version   1.13
- *  \date      May 19, 2017
+ *  \version   1.14
+ *  \date      May 22, 2017
  *  \pre
  *  \bug
  *  \warning
@@ -123,7 +123,7 @@ int fzgetc(FILE * file_handle, SGZip *z) {
 		if (((*z).have > 0) && ((*z).pointer < (*z).have)) {
 			/* The buffer has uncompressed chars */
 		} else {
-			if (((*z).strm.avail_in > 0) && ((*z).first_time == 0)) { //!!<--- Before avail_out == 0
+			if (((*z).strm.avail_in > 0) && ((*z).first_time == 0)) { /*!!<--- Before avail_out == 0 */
 				/* The buffer of uncompressed chars is empty but
 				 It exists read data that can be uncompressed */
 			} else {
@@ -131,28 +131,28 @@ int fzgetc(FILE * file_handle, SGZip *z) {
 				 It does not exist read data that could be uncompressed, so
 				 Read data from the compressed input file */
 				(*z).strm.next_in = (*z).in;
-				(*z).strm.avail_in = 0; //!!<--- New
+				(*z).strm.avail_in = 0; /*!!<--- New*/
 				(*z).bytes_read = fread((*z).in, sizeof(unsigned char),
 						sizeof((*z).in), file_handle);
 				(*z).strm.avail_in = (*z).bytes_read;
 			}
 
-			//	if ( ((*z).strm.avail_in == 0) && /* There is no data to be uncompressed */
-			//			     ((*z).strm.avail_out == 0)) /* Tehre is no data uncompressed */
-			//			{
-			//				/* Let's read again */
-			//				(*z).strm.next_in = (*z).in;
-			//				(*z).bytes_read = fread((*z).in, sizeof(unsigned char),
-			//			sizeof((*z).in), file_handle);
-			//	(*z).strm.avail_in = (*z).bytes_read;
-			//
-			//}
+			/*	if ( ((*z).strm.avail_in == 0) && There is no data to be uncompressed
+						     ((*z).strm.avail_out == 0)) There is no data uncompressed
+						{
+							Let's read again
+							(*z).strm.next_in = (*z).in;
+							(*z).bytes_read = fread((*z).in, sizeof(unsigned char),
+						sizeof((*z).in), file_handle);
+				(*z).strm.avail_in = (*z).bytes_read;
+			
+			}*/
 
 			if ((*z).bytes_read > 0) {
 				/* Uncompress the data */
 				(*z).strm.avail_out = CHUNK;
 				(*z).strm.next_out = (*z).out;
-				(*z).have = 0; //!!<--- New
+				(*z).have = 0; /*!!<--- New*/
                 CALL_ZLIB(inflate(&((*z).strm), Z_NO_FLUSH));
 				(*z).have = CHUNK - (*z).strm.avail_out;
 				(*z).first_time = 0;
@@ -229,7 +229,7 @@ gz_return private_fzprintf(FILE * file_handle, SGZip *z, char *message) {
 
 			CALL_ZLIB(deflateInit2(&((*z).strm), Z_DEFAULT_COMPRESSION, Z_DEFLATED, windowBits | GZIP_ENCODING, 8, Z_DEFAULT_STRATEGY));
 
-			//!! Removed: (*z).have = CHUNK; /* the next_in buffer has all bytes free */
+			/*!! Removed: (*z).have = CHUNK;*/ /* the next_in buffer has all bytes free */
 		}
 
 		if ((*z).strm.avail_in < CHUNK) {
@@ -274,7 +274,7 @@ gz_return private_fzprintf(FILE * file_handle, SGZip *z, char *message) {
 					/* * GZ files randomly (faster)                                            * */
 					/* ************************************************************************* */
 
-					// int isEOF = feof(file_handle);
+					/* int isEOF = feof(file_handle); */
 					int flush = Z_NO_FLUSH;
 					long int bytes_write = 0;
 					long int gz_block_starting_pos = 0;
@@ -293,7 +293,7 @@ gz_return private_fzprintf(FILE * file_handle, SGZip *z, char *message) {
 					 * access is desired. Using Z_FULL_FLUSH too often can seriously degrade compression.
 					 */
 
-					// THIS LOOP WILL ONLY ITERATE ONCE: (HERE ONLY FOR SECURITY PURPOSES)
+					/* THIS LOOP WILL ONLY ITERATE ONCE: (HERE ONLY FOR SECURITY PURPOSES) */
 					do {
 						/* compress the data */
 
@@ -310,13 +310,6 @@ gz_return private_fzprintf(FILE * file_handle, SGZip *z, char *message) {
 */
 						flush = Z_FULL_FLUSH;
 
-						/*
-						if ((isEOF == 1) &&                  // It is the end of file
-						    (last_i >= strlen(message))) {   // and there is no more data to be sent to the output file
-							flush = Z_FINISH;
-						}
-						*/
-
 						CALL_ZLIB(deflate(&((*z).strm), flush));
 
 						(*z).have = CHUNK - (*z).strm.avail_out;
@@ -327,7 +320,7 @@ gz_return private_fzprintf(FILE * file_handle, SGZip *z, char *message) {
 						(*z).compressed_bytes_written += bytes_write;
 
 					} while ((*z).strm.avail_in != 0);
-					//!! Removed } while ((*z).strm.avail_out == 0); /* continue compressing until it does not exist more data to be compressed */
+					/*!! Removed } while ((*z).strm.avail_out == 0);*/ /* continue compressing until it does not exist more data to be compressed */
 
 
 					/* Reset */
@@ -378,14 +371,15 @@ gz_return fzprintf(FILE * file_handle, SGZip *z, char *message, ...) {
 		size_t message_len = 0;
 		size_t sent_chars = 0;
 		int replace_args = 0;
-		char buffer_block[CHUNK + 1]; // +1 for the \x0
+		char buffer_block[CHUNK + 1]; /* +1 for the \x0 */
+    	va_list args;
+        int rest = 0;
 
 		message_len = strlen(message);
 		replace_args = (message_len < MAX_FZPRINTF_MESSAGE);
 
 		if (replace_args) {
 			buffer = (char *) malloc(2 * MAX_FZPRINTF_MESSAGE * sizeof(char));
-			va_list args;
 			va_start(args, message);
 			vsnprintf(buffer, 2 * MAX_FZPRINTF_MESSAGE, message, args);
 			va_end(args);
@@ -415,7 +409,7 @@ gz_return fzprintf(FILE * file_handle, SGZip *z, char *message, ...) {
 				}
 
 				/* Send the last block with size less than CHUNK */
-				int rest = message_len - sent_chars;
+				rest = message_len - sent_chars;
 				if (rest < CHUNK) {
 					memcpy(buffer_block, buffer + sent_chars, rest);
 					buffer_block[rest] = '\x0';
@@ -449,14 +443,14 @@ int fzeof(FILE * file_handle, SGZip *z) {
 
 	if ((*z).file_compressed == 1) {
 
-		ret = ((ret > 0) &&							// End of file reached, AND
-			  ((*z).strm.avail_in == 0) &&			// It does not exist compressed data that can be uncompressed, AND
+		ret = ((ret > 0) &&							/* End of file reached, AND */
+			  ((*z).strm.avail_in == 0) &&			/* It does not exist compressed data that can be uncompressed, AND */
 			  ((*z).pointer >= (*z).have));
 
-		if (ret) { 					// It does not exist available uncompressed data
-			 /*if ((ret = ((ret) && // Reached the end of the file and
-			  ((*z).strm.avail_out != 0) && // there is no more input data to uncompress and
-			  ((*z).pointer >= (*z).have))) == 1) { // there is no more chars in the buffer*/
+		if (ret) { 					/* It does not exist available uncompressed data */
+			 /*if ((ret = ((ret) &&  Reached the end of the file and
+			  ((*z).strm.avail_out != 0) &&  there is no more input data to uncompress and
+			  ((*z).pointer >= (*z).have))) == 1) { there is no more chars in the buffer*/
 
 			inflateEnd(&((*z).strm));
 
@@ -567,9 +561,9 @@ gz_return uncompress_file(const char * compressed_file_name, const char * uncomp
 	} else {
 
 		if (access(uncompressed_file_name, F_OK) != -1) {
-			// uncompressed file exists
+			/* uncompressed file exists */
 		} else {
-			// uncompressed file doesn't exist
+			/* uncompressed file doesn't exist */
 
 			gzFile compressed_file;
 			FILE * uncompressed_file;
@@ -611,9 +605,9 @@ gz_return compress_file(const char * uncompressed_file_name, const char * compre
 		ret = GZ_PARAMS_ERROR;
 	} else {
 		if (access(compressed_file_name, F_OK) != -1) {
-			// compressed file exists
+			/* compressed file exists */
 		} else {
-			// compressed file doesn't exist
+			/* compressed file doesn't exist */
 			FILE * uncompressed_file;
 			gzFile compressed_file;
 
