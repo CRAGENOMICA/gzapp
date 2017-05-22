@@ -100,7 +100,7 @@ void init_gzip_structure(SGZip *z) {
 long int num_chars = 0;
 
 int fzgetc(FILE * file_handle, SGZip *z) {
-	int ret;
+	int ret = 0;
 
 	(*z).reading = 1;
 	if ((*z).file_compressed == 0) {

@@ -103,7 +103,7 @@ extern "C" {
 	#define GZ_ERROR_CREATE_FILE 	-2		/* The file can not be created. Does the file already exist? Correct Name? Disk space? */
 	#define GZ_ERROR_DATA_FILE   	-3		/* The file does not contain the expected data. Maybe expected TXT or GZ file? */
     #define GZ_ERROR_OPEN_FILE		-4		/* The file can not be opened. Does it exist?  */
-	#define GZ_EOF                  -5      /* The end of file has been reached. It could be OK. */
+	#define GZ_EOF                  0      /* The end of file has been reached. It could be OK. Ask for feof() for knowning if the EOF has been reached. */
 	#define GZ_PARAMS_ERROR         -6      /* Function parameters are null */
 
 	/* CHUNK is the size of every compressed piece of data */
