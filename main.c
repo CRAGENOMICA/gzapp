@@ -4,7 +4,7 @@
 #include "zindex.h"
 
 #define APP_NAME "gzapp"
-#define APP_VER "0.2"
+#define APP_VER "22 June 2017"
 #define MSP_MAX_FILENAME (unsigned long) 4000
 
 
@@ -109,7 +109,48 @@ void test(void) {
 		fzclose(h, &gz);
 	}
 }
+/*
+int main(int argc, char *argv[]) {
+	FILE *h = 0;
+	SGZip gz;
 
+	h = fzopen("examples/100Kchr10.tfa.gz", "r", &gz);
+
+	if (h != NULL) {
+
+		struct SGZIndex idx;
+		load_index_from_file(gz.index_file_name, &idx);
+
+		char ch = ' ';
+
+		char search_id[20];
+
+		strcpy(search_id, "chr10:40531");
+
+
+
+//		strcpy(search_id, "chr10:1");
+
+
+
+		long int seq_id = 0;
+		long int max = 100000;
+		if (fzseekNearest(h, &gz, &idx, search_id, max, &seq_id) == GZ_OK) {
+
+			while(ch != 0) {
+				ch = fzgetc(h, &gz);
+
+				if (ch != 0) {
+						printf("%c", ch);
+				}
+			}
+		}
+		fzclose(h, &gz);
+	}
+
+	return 0;
+}
+*/
 
 int main(int argc, char *argv[]) {
     //test();
@@ -169,7 +210,7 @@ int main(int argc, char *argv[]) {
 			else {
 				strcpy(compressed_file_name, argv[2]);
 
-				strncpy(uncompressed_file_name, compressed_file_name, strlen(compressed_file_name) - 3); /* remove last ".gz" */
+				strncpy(uncompressed_file_name, compressed_file_name, strlen(compressed_file_name) - 3);  /* remove last ".gz" */
 
 				switch(uncompress_file(compressed_file_name, uncompressed_file_name)) {
 					case GZ_OK:
